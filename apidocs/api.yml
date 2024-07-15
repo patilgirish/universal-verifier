@@ -1,0 +1,447 @@
+openapi: 3.0.0
+info:
+  version: 0.0.3-unstable
+  title: VC Verifier API
+  description: This is an Experimental Open API Specification for the [VC Data Model](https://www.w3.org/TR/vc-data-model/).
+  license:
+    name: W3C Software and Document License
+    url: http://www.w3.org/Consortium/Legal/copyright-software.
+  contact:
+    name: GitHub Source Code
+    url: https://github.com/w3c-ccg/vc-api
+servers:
+  - url: http://localhost:3000
+paths:
+  /credentials/verify:
+    post:
+      summary: Verifies a verifiableCredential and returns a verificationResult in the response body.
+      tags:
+        - Credentials
+      security:
+        - networkAuth: []
+        - oAuth2: []
+        - zCap: []
+      operationId: verifyCredential
+      x-expectedCaller: Verification Coordinator
+      description: Verifies a verifiableCredential and returns a verificationResult in the response body.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/VerifyCredentialRequest"
+        description: Parameters for verifying a verifiableCredential.
+      responses:
+        "200":
+          description: Verifiable Credential successfully verified!
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VerificationResult"
+        "400":
+          description: invalid input!
+  /presentations/verify:
+    post:
+      summary: Verifies a Presentation with or without proofs attached and returns a verificationResult in the response body.
+      tags:
+        - Presentations
+      security:
+        - networkAuth: []
+        - oAuth2: []
+        - zCap: []
+      operationId: verifyPresentation
+      x-expectedCaller: Verification Coordinator
+      description: Verifies a verifiablePresentation and returns a verificationResult in the response body.  Given the possibility of denial of service, buffer overflow, or other style attacks, an implementation is permitted to rate limit or restrict requests against this API endpoint to those requests that contain only a single credential with a 413 or 429 error code as appropriate.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              oneOf:
+                - $ref: "#/components/schemas/VerifyPresentationRequest"
+                - $ref: "#/components/schemas/ProoflessVerifyPresentationRequest"
+        description: Parameters for verifying a verifiablePresentation.
+      responses:
+        "200":
+          description: Verifiable Presentation successfully verified!
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/schemas-VerificationResult"
+        "400":
+          description: Invalid or malformed input
+        "413":
+          description: Payload too large
+        "429":
+          description: Request rate limit exceeded.
+  /challenges:
+    post:
+      summary: Passing an empty body to this endpoint creates and returns a challenge string in the response body.
+      security:
+        - networkAuth: []
+        - oAuth2: []
+        - zCap: []
+      operationId: challenge
+      x-expectedCaller: Verification Coordinator
+      description: Creates a challenge to be used as `options.challenge` in future requests.
+      responses:
+        "200":
+          description: Challenge created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CreateChallengeResult"
+        "400":
+          description: Invalid or malformed input
+components:
+  securitySchemes:
+    networkAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: sourceIpAccessRules
+    zCap:
+      type: http
+      scheme: bearer
+      bearerFormat: AuthorizationCapability
+    didAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: VerifiablePresentation
+    oAuth2:
+      type: http
+      scheme: bearer
+      bearerFormat: VcapiOauth2
+  schemas:
+    VerifyCredentialRequest:
+      type: object
+      properties:
+        verifiableCredential:
+          $ref: "#/components/schemas/VerifiableCredential"
+        options:
+          $ref: "#/components/schemas/VerifyCredentialOptions"
+    VerifyCredentialResponse:
+      $ref: "#/components/schemas/VerificationResult"
+    VerifyPresentationRequest:
+      type: object
+      properties:
+        verifiablePresentation:
+          $ref: "#/components/schemas/VerifiablePresentation"
+        options:
+          $ref: "#/components/schemas/VerifyPresentationOptions"
+    ProoflessVerifyPresentationRequest:
+      type: object
+      properties:
+        presentation:
+          $ref: "#/components/schemas/Presentation"
+    VerifyPresentationResponse:
+      $ref: "#/components/schemas/schemas-VerificationResult"
+    CreateChallengeResponse:
+      $ref: "#/components/schemas/CreateChallengeResult"
+    Issuer:
+      type: object
+      description: A JSON-LD Verifiable Credential Issuer.
+      oneOf:
+        - type: string
+        - type: object
+          properties:
+            id:
+              type: string
+              description: The issuer id.
+      example:
+        id: did:key:z6MkjRagNiMu91DduvCvgEsqLZDVzrJzFrwahc4tXLt9DoHd
+    Credential:
+      type: object
+      description: A JSON-LD Verifiable Credential without a proof.
+      properties:
+        "@context":
+          type: array
+          description: The JSON-LD context of the credential.
+          items:
+            type: string
+        id:
+          type: string
+          description: The ID of the credential. This property MAY be empty. The issuer SHOULD NOT auto-generate the id property if not provided, as a Verifiable Credential does not require the id property to be valid, and there are use cases for which the id property cannot be set.
+        type:
+          type: array
+          description: The JSON-LD type of the credential.
+          items:
+            type: string
+        issuer:
+          $ref: "#/components/schemas/Issuer"
+        issuanceDate:
+          type: string
+          description: The issuanceDate
+        expirationDate:
+          type: string
+          description: The expirationDate
+        credentialSubject:
+          type: object
+          description: The subject
+      example:
+        "@context":
+          - https://www.w3.org/2018/credentials/v1
+          - https://www.w3.org/2018/credentials/examples/v1
+        id: http://example.gov/credentials/3732
+        type:
+          - VerifiableCredential
+          - UniversityDegreeCredential
+        issuer: did:example:123
+        issuanceDate: "2020-03-16T22:37:26.544Z"
+        credentialSubject:
+          id: did:example:123
+          degree:
+            type: BachelorDegree
+            name: Bachelor of Science and Arts
+    DataIntegrityProof:
+      type: object
+      description: A Data Integrity Proof as defined by the W3C VC Data Integrity specification.
+      properties:
+        type:
+          type: string
+          description: Data Integrity Proof type.
+        cryptosuite:
+          type: string
+          description: The name of the cryptographic suite.
+        created:
+          type: string
+          description: Date the proof was created.
+        challenge:
+          type: string
+          description: A value chosen by the verifier to mitigate authentication proof replay attacks.
+        domain:
+          type: string
+          description: The domain of the proof to restrict its use to a particular target.
+        nonce:
+          type: string
+          description: A value chosen by the creator of a proof to randomize proof values for privacy purposes.
+        verificationMethod:
+          type: string
+          description: Verification Method used to verify proof.
+        proofPurpose:
+          type: string
+          description: The purpose of the proof to be used with verificationMethod.
+        proofValue:
+          type: string
+          description: Value of the Linked Data proof.
+      example:
+        type: DataIntegrityProof
+        cryptosuite: ecdsa-rdfc-2019
+        created: "2024-01-11T19:14:04Z"
+        verificationMethod: https://di.example/issuer#zDnaepBuvsQ8cpsWrVKw8fbpGpvPeNSjVPTWoq6cRqaYzBKVP
+        proofPurpose: assertionMethod
+        proofValue: zXb23ZkdakfJNUhiTEdwyE598X7RLrkjnXEADLQZ7vZyUGXX8cyJZRBkNw813SGsJHWrcpo4Y8hRJ7adYn35Eetq
+    VerifiableCredential:
+      type: object
+      description: A JSON-LD Verifiable Credential with a proof.
+      allOf:
+        - $ref: "#/components/schemas/Credential"
+        - type: object
+          properties:
+            proof:
+              $ref: "#/components/schemas/DataIntegrityProof"
+      example:
+        "@context":
+          - https://www.w3.org/2018/credentials/v1
+          - https://www.w3.org/2018/credentials/examples/v1
+        id: http://example.gov/credentials/3732
+        type:
+          - VerifiableCredential
+          - UniversityDegreeCredential
+        issuer: did:example:123
+        issuanceDate: "2020-03-16T22:37:26.544Z"
+        credentialSubject:
+          id: did:example:123
+          degree:
+            type: BachelorDegree
+            name: Bachelor of Science and Arts
+        proof:
+          type: Ed25519Signature2018
+          created: "2020-04-02T18:28:08Z"
+          verificationMethod: did:example:123#z6MksHh7qHWvybLg5QTPPdG2DgEjjduBDArV9EF9mRiRzMBN
+          proofPurpose: assertionMethod
+          jws: eyJhbGciOiJFZERTQSIsImI2NCI6ZmFsc2UsImNyaXQiOlsiYjY0Il19..YtqjEYnFENT7fNW-COD0HAACxeuQxPKAmp4nIl8jYAu__6IH2FpSxv81w-l5PvE1og50tS9tH8WyXMlXyo45CA
+    VerifyCredentialOptions:
+      type: object
+      additionalProperties: false
+      description: Options for specifying how a credential is verified
+      properties:
+        returnCredential:
+          type: boolean
+          description: Should the verified credential be returned in the response? If true, then the verified credential should be returned in the form in which it was verified. If false or not provided, then the verified credential should not be returned.
+      example:
+        returnCredential: true
+    VerificationResult:
+      type: object
+      additionalProperties: false
+      description: Object summarizing a verification
+      properties:
+        checks:
+          type: array
+          description: The checks performed
+          items:
+            type: string
+        warnings:
+          type: array
+          description: Warnings
+          items:
+            type: string
+        errors:
+          type: array
+          description: Errors
+          items:
+            type: string
+        credential:
+          type: object
+          description: The verified credential
+      example:
+        checks:
+          - proof
+        warnings: []
+        errors: []
+    Presentation:
+      type: object
+      description: A JSON-LD Verifiable Presentation without a proof.
+      properties:
+        "@context":
+          type: array
+          description: The JSON-LD context of the presentation.
+          items:
+            type: string
+        id:
+          type: string
+          description: The ID of the presentation.
+        type:
+          type: array
+          description: The JSON-LD type of the presentation.
+          items:
+            type: string
+        holder:
+          type: object
+          description: The holder - will be ignored if no proof is present since there is no proof of authority over the credentials
+          nullable: true
+        verifiableCredential:
+          type: array
+          description: The Verifiable Credentials
+          items:
+            $ref: "#/components/schemas/VerifiableCredential"
+      example:
+        "@context":
+          - https://www.w3.org/2018/credentials/v1
+          - https://www.w3.org/2018/credentials/examples/v1
+        holder: did:example:123
+        type: VerifiablePresentation
+        verifiableCredential:
+          - "@context":
+              - https://www.w3.org/2018/credentials/v1
+              - https://www.w3.org/2018/credentials/examples/v1
+          - id: http://example.gov/credentials/3732
+          - type:
+              - VerifiableCredential
+              - UniversityDegreeCredential
+          - issuer: did:example:123
+          - issuanceDate: "2020-03-16T22:37:26.544Z"
+          - credentialSubject:
+              id: did:example:123
+              degree:
+                type: BachelorDegree
+                name: Bachelor of Science and Arts
+          - proof:
+              type: Ed25519Signature2018
+              created: "2020-04-02T18:28:08Z"
+              verificationMethod: did:example:123#z6MksHh7qHWvybLg5QTPPdG2DgEjjduBDArV9EF9mRiRzMBN
+              proofPurpose: assertionMethod
+              jws: eyJhbGciOiJFZERTQSIsImI2NCI6ZmFsc2UsImNyaXQiOlsiYjY0Il19..YtqjEYnFENT7fNW-COD0HAACxeuQxPKAmp4nIl8jYAu__6IH2FpSxv81w-l5PvE1og50tS9tH8WyXMlXyo45CA
+    VerifiablePresentation:
+      type: object
+      description: A JSON-LD Verifiable Presentation with a proof.
+      allOf:
+        - $ref: "#/components/schemas/Presentation"
+        - type: object
+          properties:
+            proof:
+              $ref: "#/components/schemas/DataIntegrityProof"
+      example:
+        "@context":
+          - https://www.w3.org/2018/credentials/v1
+          - https://www.w3.org/2018/credentials/examples/v1
+        holder: did:example:123
+        type: VerifiablePresentation
+        verifiableCredential:
+          - "@context":
+              - https://www.w3.org/2018/credentials/v1
+              - https://www.w3.org/2018/credentials/examples/v1
+          - id: http://example.gov/credentials/3732
+          - type:
+              - VerifiableCredential
+              - UniversityDegreeCredential
+          - issuer: did:example:123
+          - issuanceDate: "2020-03-16T22:37:26.544Z"
+          - credentialSubject:
+              id: did:example:123
+              degree:
+                type: BachelorDegree
+                name: Bachelor of Science and Arts
+          - proof:
+              type: Ed25519Signature2018
+              created: "2020-04-02T18:28:08Z"
+              verificationMethod: did:example:123#z6MksHh7qHWvybLg5QTPPdG2DgEjjduBDArV9EF9mRiRzMBN
+              proofPurpose: assertionMethod
+              jws: eyJhbGciOiJFZERTQSIsImI2NCI6ZmFsc2UsImNyaXQiOlsiYjY0Il19..YtqjEYnFENT7fNW-COD0HAACxeuQxPKAmp4nIl8jYAu__6IH2FpSxv81w-l5PvE1og50tS9tH8WyXMlXyo45CA
+        proof:
+          type: Ed25519Signature2018
+          created: "2020-04-02T18:28:08Z"
+          verificationMethod: did:example:123#z6MksHh7qHWvybLg5QTPPdG2DgEjjduBDArV9EF9mRiRzMBN
+          proofPurpose: assertionMethod
+          jws: eyJhbGciOiJFZERTQSIsImI2NCI6ZmFsc2UsImNyaXQiOlsiYjY0Il19..YtqjEYnFENT7fNW-COD0HAACxeuQxPKAmp4nIl8jYAu__6IH2FpSxv81w-l5PvE1og50tS9tH8WyXMlXyo45CA
+    VerifyPresentationOptions:
+      type: object
+      additionalProperties: false
+      description: Options for specifying how a presentation is verified
+      properties:
+        challenge:
+          type: string
+          description: A challenge provided by the requesting party of the proof. For example 6e62f66e-67de-11eb-b490-ef3eeefa55f2
+        domain:
+          type: string
+          description: The intended domain of validity for the proof. For example website.example
+        returnPresentation:
+          type: boolean
+          description: Should the verified presentation be returned in the response? If true, then the verified presentation should be returned in the form in which it was verified. If false or not provided, then the verified presentation should not be returned.
+      example:
+        domain: example.com
+        challenge: d436f0c8-fbd9-4e48-bbb2-55fc5d0920a8
+        returnPresentation: true
+    schemas-VerificationResult:
+      type: object
+      additionalProperties: false
+      description: Object summarizing a verification
+      properties:
+        checks:
+          type: array
+          description: The checks performed
+          items:
+            type: string
+        warnings:
+          type: array
+          description: Warnings
+          items:
+            type: string
+        errors:
+          type: array
+          description: Errors
+          items:
+            type: string
+        presentation:
+          type: object
+          description: The verified presentation
+      example:
+        checks:
+          - proof
+        warnings: []
+        errors: []
+    CreateChallengeResult:
+      type: object
+      additionalProperties: false
+      description: Object containg a challenge
+      properties:
+        challenge:
+          type: string
+          description: The challenge value

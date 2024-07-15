@@ -1,0 +1,25 @@
+{
+  "name": "universal-verifier-api",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Universal Vc Verifier APIs",
+  "main": "src/app.js",
+  "scripts": {
+    "start": "node src/app.js",
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "apidoc": "npx serve ./apidocs"
+  },
+  "author": "Girish Patil",
+  "license": "ISC",
+  "dependencies": {
+    "@digitalbazaar/ed25519-signature-2018": "^4.0.0",
+    "@digitalbazaar/ed25519-signature-2020": "^5.3.0",
+    "@digitalbazaar/vc": "^6.3.0",
+    "@digitalbazaar/vc-revocation-list": "^6.0.0",
+    "@transmute/json-web-signature": "^0.7.0-unstable.82",
+    "axios": "^1.7.2",
+    "did-resolver": "^4.1.0",
+    "express": "^4.17.1",
+    "web-did-resolver": "^2.0.27"
+  }
+}
